@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ASTERIXDB</title>
+    <link rel="stylesheet" href="prism.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+
+        <h1>ASTERIXDB JS SDK</h1>
+
+        <pre><code class="language-javascript">
+var A = new AsterixDBConnection().dataverse("TinySocial");
+        </code></pre>
+
+        <h3>Query 0-A - Exact-Match Lookup</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+where $user.id = 8
+return $user;
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression0a = new FLWOGRExpression()
+  .ForClause("$user", new AExpression("dataset FacebookUsers"))
+  .WhereClause(new AExpression("$user.id = 8"))
+  .ReturnClause("$user");
+        </code></pre>
+        <pre><code class="language-json" id="result0a"></code></pre>
+
+        <h3>Query 0-B - Range Scan</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+where $user.id >= 2 and $user.id <= 4
+return $user;
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression0b = new FLWOGRExpression()
+  .ForClause("$user", new AExpression("dataset FacebookUsers"))
+  .WhereClause().and(new AExpression("$user.id >= 2"), new AExpression("$user.id <= 4"))
+  .ReturnClause("$user");
+        </code></pre>
+
+        <pre><code class="language-json" id="result0b"></code></pre>
+
+        <h3>Query 1 - Other Query Filters</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+where $user.user-since >= datetime('2010-07-22T00:00:00')
+and $user.user-since <= datetime('2012-07-29T23:59:59')
+return $user;
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression1 = new FLWOGRExpression()
+  .ForClause("$user", new AExpression("dataset FacebookUsers"))
+  .WhereClause().and(
+     new AExpression("$user.user-since >= datetime('2010-07-22T00:00:00')"),
+     new AExpression("$user.user-since <= datetime('2012-07-29T23:59:59')")
+  ).ReturnClause("$user");
+        </code></pre>
+
+        <pre><code class="language-markup" id="result1"></code></pre>
+
+        <h3>Query 2-A - Equijoin</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+for $message in dataset FacebookMessages
+where $message.author-id = $user.id
+return {
+    "uname": $user.name,
+    "message": $message.message
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression2a = new FLWOGRExpression()
+    .ForClause ("$user", new AExpression("dataset FacebookUsers"))
+    .ForClause ("$message", new AExpression("dataset FacebookMessages"))
+    .WhereClause(new AExpression("$message.author-id = $user.id"))
+    .ReturnClause({
+       "uname" : "$user.name",
+       "message" : "$message.message"
+    });
+        </code></pre>
+
+        <pre><code class="language-markup" id="result2a"></code></pre>
+
+        <h3>Query 2-B - Index join</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+for $message in dataset FacebookMessages
+where $message.author-id /*+ indexnl */  = $user.id
+return {
+    "uname": $user.name,
+    "message": $message.message
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression2b = new FLWOGRExpression()
+  .ForClause ("$user", new AExpression("dataset FacebookUsers"))
+  .ForClause ("$message", new AExpression("dataset FacebookMessages"))
+  .WhereClause(new AExpression("$message.author-id /*+ indexnl */  = $user.id"))
+  .ReturnClause({
+     "uname" : "$user.name",
+     "message" : "$message.message"
+  });
+        </code></pre>
+
+        <pre><code class="language-markup" id="result2b"></code></pre>
+
+
+        <h3>Query 3 - Nested Outer Join</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $user in dataset FacebookUsers
+return {
+    "uname": $user.name,
+    "messages": for $message in dataset FacebookMessages
+                where $message.author-id = $user.id
+                return $message.message
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression3messages = new FLWOGRExpression()
+  .ForClause("$message", new AExpression("dataset FacebookMessages"))
+  .WhereClause(new AExpression("$message.author-id = $user.id"))
+  .ReturnClause("$message.message");
+
+var expression3 = new FLWOGRExpression()
+  .ForClause("$user", new AExpression("dataset FacebookUsers"))
+  .ReturnClause({
+      "uname": "$user.name",
+      "messages" : expression3messages
+  });
+        </code></pre>
+
+        <pre><code class="language-markup" id="result3"></code></pre>
+
+
+        <h3>Query 4 - Theta Join</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $t in dataset TweetMessages
+return {
+    "message": $t.message-text,
+    "nearby-messages": for $t2 in dataset TweetMessages
+                       where spatial-distance($t.sender-location, $t2.sender-location) <= 1
+                       return { "msgtxt":$t2.message-text}
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression4messages = new FLWOGRExpression()
+  .ForClause( "$t2", new AExpression("dataset TweetMessages"))
+  .WhereClause( new AExpression("spatial-distance($t.sender-location, $t2.sender-location) <= 1"))
+  .ReturnClause({ "msgtxt" : "$t2.message-text" });
+
+var expression4 = new FLWOGRExpression()
+  .ForClause( "$t", new AExpression("dataset TweetMessages"))
+  .ReturnClause({
+      "message" : "$t.message-text",
+      "nearby-messages" : expression4messages
+  });
+        </code></pre>
+
+        <pre><code class="language-markup" id="result4"></code></pre>
+
+
+        <h3>Query 5 - Fuzzy Join</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+set simfunction "edit-distance";
+set simthreshold "3";
+
+for $fbu in dataset FacebookUsers
+return {
+    "id": $fbu.id,
+    "name": $fbu.name,
+    "similar-users": for $t in dataset TweetMessages
+                     let $tu := $t.user
+                     where $tu.name ~= $fbu.name
+                    return {
+                        "twitter-screenname": $tu.screen-name,
+                        "twitter-name": $tu.name
+                    }
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var similarUsersExpression = new FLWOGRExpression()
+    .ForClause("$t", new AExpression("dataset TweetMessages"))
+    .LetClause("$tu", new AExpression("$t.user"))
+    .WhereClause(new AExpression("$tu.name ~= $fbu.name"))
+    .ReturnClause({
+        "twitter-screenname": "$tu.screen-name",
+        "twitter-name": "$tu.name"
+    });
+
+var expression5 = new FLWOGRExpression()
+    .ForClause("$fbu", new AExpression("dataset FacebookUsers"))
+    .ReturnClause(
+        {
+            "id" : "$fbu.id",
+            "name" : "$fbu.name",
+            "similar-users" : similarUsersExpression
+        }
+    );
+        </code></pre>
+
+        <pre><code class="language-markup" id="result5"></code></pre>
+
+
+        <h3>Query 6 - Existential Quantification</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $fbu in dataset FacebookUsers
+where (some $e in $fbu.employment satisfies is-null($e.end-date))
+return $fbu;
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression6 = new FLWOGRExpression()
+    .ForClause("$fbu", new AQLClause().set("dataset FacebookUsers"))
+    .WhereClause(
+        new QuantifiedExpression (
+            "some" ,
+            {"$e" : new AExpression("$fbu.employment") },
+            new FunctionExpression("is-null", new AExpression("$e.end-date"))
+        )
+    )
+    .ReturnClause("$fbu");
+        </code></pre>
+
+        <pre><code class="language-markup" id="result6"></code></pre>
+
+
+      </div>
+    </div>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="asterix-sdk-stable.js"></script>
+    <script src="prism.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
