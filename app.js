@@ -210,7 +210,7 @@ $(document).ready(function() {
       );
 
   var success9b = function(res) {
-      addResult('#result9b', JSON.stringify("results"));
+      addResult('#result9b', JSON.stringify(res));
   };
   A.query(expression9b.val(), success9b);
 
@@ -229,7 +229,7 @@ $(document).ready(function() {
       );
 
   var success10 = function(res) {
-      addResult('#result10', JSON.stringify("results"));
+      addResult('#result10', JSON.stringify(res));
   };
   A.query(expression10.val(), success10);
 
