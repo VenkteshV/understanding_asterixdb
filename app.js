@@ -153,4 +153,110 @@ $(document).ready(function() {
 
   A.query(expression6.val(), success6);
 
+  var expression7 = new FLWOGRExpression()
+    .ForClause("$fbu", new AExpression("dataset FacebookUsers"))
+    .WhereClause(
+        new QuantifiedExpression (
+            "every" ,
+            {"$e" : new AExpression("$fbu.employment") },
+            new FunctionExpression("not", new FunctionExpression("is-null", new AExpression("$e.end-date")))
+        )
+    )
+    .ReturnClause("$fbu");
+
+  var success7 = function(res) {
+      addResult('#result7', JSON.stringify(res));
+  };
+  A.query(expression7.val(), success7);
+
+
+  var expression8 = new FunctionExpression(
+      "count",
+      new FLWOGRExpression()
+          .ForClause("$fbu", new AExpression("dataset FacebookUsers"))
+          .ReturnClause("$fbu")
+  );
+
+  var success8 = function(res) {
+      addResult('#result8', JSON.stringify(res));
+  };
+  A.query(expression8.val(), success8);
+
+  var expression9a = new FLWOGRExpression()
+      .ForClause("$t", new AExpression("dataset TweetMessages"))
+      .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+      .ReturnClause(
+          {
+              "user" : "$uid",
+              "count" : new FunctionExpression("count", new AExpression("$t"))
+          }
+      );
+
+  var success9a = function(res) {
+      addResult('#result9a', JSON.stringify(res));
+  };
+  A.query(expression9a.val(), success9a);
+
+
+  var expression9b = new FLWOGRExpression()
+      .ForClause("$t", new AExpression("dataset TweetMessages"))
+      .AQLClause("/*+ hash*/")
+      .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+      .ReturnClause(
+          {
+              "user" : "$uid",
+              "count" : new FunctionExpression("count", new AExpression("$t"))
+          }
+      );
+
+  var success9b = function(res) {
+      addResult('#result9b', JSON.stringify("results"));
+  };
+  A.query(expression9b.val(), success9b);
+
+
+  var expression10 = new FLWOGRExpression()
+      .ForClause("$t", new AExpression("dataset TweetMessages"))
+      .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+      .LetClause("$c", new FunctionExpression("count", new AExpression("$t")))
+      .OrderbyClause( new AExpression("$c"), "desc" )
+      .LimitClause(new AExpression("3"))
+      .ReturnClause(
+          {
+              "user" : "$uid",
+              "count" : "$c"
+          }
+      );
+
+  var success10 = function(res) {
+      addResult('#result10', JSON.stringify("results"));
+  };
+  A.query(expression10.val(), success10);
+
+
+  var expression11 = new FLWOGRExpression()
+    .ForClause( "$t", new AExpression("dataset TweetMessages"))
+    .ReturnClause({
+        "tweet"         : new AExpression("$t"),
+        "similar-tweets": new FLWOGRExpression()
+                            .ForClause( "$t2", new AExpression("dataset TweetMessages"))
+                            .WhereClause().and(
+                                new AExpression("$t2.referred-topics ~= $t.referred-topics"),
+                                new AExpression("$t2.tweetid != $t.tweetid")
+                             )
+                            .ReturnClause("$t2.referred-topics")
+    });
+
+  var success11 = function(res) {
+      addResult('#result11', JSON.stringify(res));
+  };
+
+  var simfunction = new SetStatement( "simfunction", "jaccard" );
+  var simthreshold = new SetStatement( "simthreshold", "0.3");
+  A.query(
+      [ simfunction.val(), simthreshold.val(), expression11.val()],
+      success11
+  );
+
+
 });

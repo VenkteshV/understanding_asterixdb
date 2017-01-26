@@ -265,6 +265,180 @@ var expression6 = new FLWOGRExpression()
         <pre><code class="language-markup" id="result6"></code></pre>
 
 
+        <h3>Query 7 - Universal Quantification</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $fbu in dataset FacebookUsers
+where (every $e in $fbu.employment satisfies not(is-null($e.end-date)))
+return $fbu;
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression7 = new FLWOGRExpression()
+  .ForClause("$fbu", new AExpression("dataset FacebookUsers"))
+  .WhereClause(
+      new QuantifiedExpression (
+          "every" ,
+          {"$e" : new AExpression("$fbu.employment") },
+          new FunctionExpression("not", new FunctionExpression("is-null", new AExpression("$e.end-date")))
+      )
+  )
+  .ReturnClause("$fbu");
+        </code></pre>
+
+        <pre><code class="language-markup" id="result7"></code></pre>
+
+
+        <h3>Query 8 - Simple Aggregation</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+count(for $fbu in dataset FacebookUsers return $fbu);
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression8 = new FunctionExpression(
+    "count",
+    new FLWOGRExpression()
+        .ForClause("$fbu", new AExpression("dataset FacebookUsers"))
+        .ReturnClause("$fbu")
+);
+        </code></pre>
+
+        <pre><code class="language-markup" id="result8"></code></pre>
+
+
+        <h3>Query 9-A - Grouping and Aggregation</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $t in dataset TweetMessages
+group by $uid := $t.user.screen-name with $t
+return {
+    "user": $uid,
+    "count": count($t)
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression9a = new FLWOGRExpression()
+    .ForClause("$t", new AExpression("dataset TweetMessages"))
+    .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+    .ReturnClause(
+        {
+            "user" : "$uid",
+            "count" : new FunctionExpression("count", new AExpression("$t"))
+        }
+    );
+        </code></pre>
+
+        <pre><code class="language-markup" id="result9a"></code></pre>
+
+
+        <h3>Query 9-B - (Hash-Based) Grouping and Aggregation</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $t in dataset TweetMessages
+/*+ hash*/
+group by $uid := $t.user.screen-name with $t
+return {
+    "user": $uid,
+    "count": count($t)
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression9b = new FLWOGRExpression()
+    .ForClause("$t", new AExpression("dataset TweetMessages"))
+    .AQLClause("/*+ hash*/")
+    .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+    .ReturnClause(
+        {
+            "user" : "$uid",
+            "count" : new FunctionExpression("count", new AExpression("$t"))
+        }
+    );
+        </code></pre>
+
+        <pre><code class="language-markup" id="result9b"></code></pre>
+
+
+        <h3>Query 10 - Grouping and Limits</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+for $t in dataset TweetMessages
+group by $uid := $t.user.screen-name with $t
+let $c := count($t)
+order by $c desc
+limit 3
+return {
+    "user": $uid,
+    "count": $c
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression10 = new FLWOGRExpression()
+    .ForClause("$t", new AExpression("dataset TweetMessages"))
+    .GroupClause("$uid", new AExpression("$t.user.screen-name"), "with", "$t")
+    .LetClause("$c", new FunctionExpression("count", new AExpression("$t")))
+    .OrderbyClause( new AExpression("$c"), "desc" )
+    .LimitClause(new AExpression("3"))
+    .ReturnClause(
+        {
+            "user" : "$uid",
+            "count" : "$c"
+        }
+    );
+        </code></pre>
+
+        <pre><code class="language-markup" id="result10"></code></pre>
+
+
+        <h3>Query 11 - Left Outer Fuzzy Join</h3>
+        <h5>AQL</h5>
+        <pre><code class="language-sql">
+use dataverse TinySocial;
+
+set simfunction "jaccard";
+set simthreshold "0.3";
+
+for $t in dataset TweetMessages
+return {
+    "tweet": $t,
+    "similar-tweets": for $t2 in dataset TweetMessages
+    where  $t2.referred-topics ~= $t.referred-topics
+    and $t2.tweetid != $t.tweetid
+    return $t2.referred-topics
+};
+        </code></pre>
+        <h5>JS</h5>
+        <pre><code class="language-javascript">
+var expression11 = new FLWOGRExpression()
+    .ForClause( "$t", new AExpression("dataset TweetMessages"))
+    .ReturnClause({
+        "tweet"         : new AExpression("$t"),
+        "similar-tweets": new FLWOGRExpression()
+                            .ForClause( "$t2", new AExpression("dataset TweetMessages"))
+                            .WhereClause().and(
+                                new AExpression("$t2.referred-topics ~= $t.referred-topics"),
+                                new AExpression("$t2.tweetid != $t.tweetid")
+                             )
+                            .ReturnClause("$t2.referred-topics")
+    });
+        </code></pre>
+
+        <pre><code class="language-markup" id="result11"></code></pre>
+
+
       </div>
     </div>
 
